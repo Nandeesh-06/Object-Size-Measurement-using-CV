@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Object Size Measurement</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 1rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            margin-bottom: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Upload Section */
+        .upload-area {
+            border: 3px dashed #3498db;
+            border-radius: 12px;
+            padding: 50px 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8fbff;
+        }
+
+        .upload-area:hover {
+            border-color: #2980b9;
+            background: #ecf0f8;
+        }
+
+        .upload-area.drag-over {
+            border-color: #27ae60;
+            background: #e8f8f5;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .upload-text {
+            color: #2c3e50;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .upload-subtext {
+            color: #95a5a6;
+            font-size: 0.9rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-name {
+            margin-top: 20px;
+            padding: 12px;
+            background: #ecf0f8;
+            border-radius: 8px;
+            color: #2980b9;
+            font-weight: 500;
+            display: none;
+            word-break: break-all;
+        }
+
+        .file-name.show {
+            display: block;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 25px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2980b9 0%, #1f618d 100%);
+            box-shadow: 0 5px 20px rgba(52, 152, 219, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .btn-secondary {
+            background: #ecf0f8;
+            color: #2980b9;
+            border: 2px solid #3498db;
+        }
+
+        .btn-secondary:hover {
+            background: #3498db;
+            color: white;
+            box-shadow: 0 5px 20px rgba(52, 152, 219, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Loading Spinner */
+        .loading-container {
+            display: none;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .loading-container.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 5px solid #ecf0f8;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #7f8c8d;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        /* Result Section */
+        .result-section {
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-image {
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            max-height: 500px;
+            object-fit: contain;
+        }
+
+        .result-info {
+            background: #f0f8ff;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .result-info p {
+            color: #2c3e50;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .result-title {
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .card {
+                padding: 25px;
+            }
+
+            .upload-area {
+                padding: 35px 20px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .header p {
+                font-size: 0.9rem;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .upload-area {
+                padding: 30px 15px;
+            }
+
+            .upload-icon {
+                font-size: 2rem;
+            }
+
+            .upload-text {
+                font-size: 1rem;
+            }
+        }
+
+        /* Hide/Show classes */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📏 Object Size Measurement</h1>
+            <p>AI-powered measurement using object detection</p>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="card" id="uploadCard">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📤</div>
+                <div class="upload-text">Click or Drag Image to Upload</div>
+                <div class="upload-subtext">PNG, JPG, JPEG (Max 10MB)</div>
+            </div>
+            <div class="file-name" id="fileName"></div>
+            <input type="file" id="fileInput" class="file-input" accept="image/*">
+            
+            <div class="button-group">
+                <button class="btn btn-primary" id="uploadBtn">Upload Image</button>
+                <button class="btn btn-secondary" id="clearBtn">Clear</button>
+            </div>
+        </div>
+
+        <!-- Loading Section -->
+        <div class="card loading-container" id="loadingContainer">
+            <div class="spinner"></div>
+            <div class="loading-text">Processing your image...</div>
+        </div>
+
+        <!-- Result Section -->
+        <div class="card result-section" id="resultSection">
+            <div class="result-title">✅ Measurement Complete</div>
+            <img id="resultImage" class="result-image" alt="Result Image">
+            <div class="result-info">
+                <p>Your image has been processed. All detected objects are outlined and their sizes have been measured in centimeters.</p>
+            </div>
+            <button class="btn btn-primary" id="uploadAnotherBtn">Upload Another Image</button>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const uploadAnotherBtn = document.getElementById('uploadAnotherBtn');
+        const loadingContainer = document.getElementById('loadingContainer');
+        const resultSection = document.getElementById('resultSection');
+        const resultImage = document.getElementById('resultImage');
+        const uploadCard = document.getElementById('uploadCard');
+
+        let selectedFile = null;
+
+        // Upload Area Click
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // File Input Change
+        fileInput.addEventListener('change', (e) => {
+            handleFileSelect(e.target.files[0]);
+        });
+
+        // Drag and Drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        // Handle File Selection
+        function handleFileSelect(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                alert('Please select a valid image file');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size must be less than 10MB');
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = `📎 Selected: ${file.name}`;
+            fileName.classList.add('show');
+            uploadBtn.disabled = false;
+        }
+
+        // Upload Button Click
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) {
+                alert('Please select an image first');
+                return;
+            }
+
+            uploadBtn.disabled = true;
+            uploadCard.classList.add('hidden');
+            loadingContainer.classList.add('show');
+            resultSection.classList.remove('show');
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const response = await fetch('/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+
+                const html = await response.text();
+                
+                // Extract image path from response HTML
+                const imgMatch = html.match(/src='\/outputs\/([^']+)'/);
+                if (imgMatch && imgMatch[1]) {
+                    const imagePath = `/outputs/${imgMatch[1]}`;
+                    resultImage.src = imagePath;
+                    
+                    loadingContainer.classList.remove('show');
+                    resultSection.classList.add('show');
+                } else {
+                    throw new Error('Could not extract image from response');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error uploading image: ' + error.message);
+                resetUpload();
+            }
+        });
+
+        // Clear Button Click
+        clearBtn.addEventListener('click', () => {
+            resetUpload();
+        });
+
+        // Upload Another Button Click
+        uploadAnotherBtn.addEventListener('click', () => {
+            resetUpload();
+        });
+
+        // Reset Upload Form
+        function resetUpload() {
+            selectedFile = null;
+            fileInput.value = '';
+            fileName.classList.remove('show');
+            fileName.textContent = '';
+            uploadBtn.disabled = true;
+            loadingContainer.classList.remove('show');
+            resultSection.classList.remove('show');
+            uploadCard.classList.remove('hidden');
+        }
+
+        // Initial state
+        uploadBtn.disabled = true;
+    </script>
+</body>
+</html>

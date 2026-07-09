@@ -1,0 +1,143 @@
+# 🚀 PRODUCTION-LEVEL OBJECT SIZE MEASUREMENT SYSTEM
+# YOLOv8 + OpenCV + Automatic Reference Detection + Robust API
+
+import cv2# 🚀 OBJECT SIZE MEASUREMENT SYSTEM (CLEAN VERSION)
+
+import cv2
+import numpy as np
+from flask import Flask, request, send_file
+import os
+import uuid
+
+# -----------------------------
+# CONFIG
+# -----------------------------
+UPLOAD_FOLDER = 'uploads'
+OUTPUT_FOLDER = 'outputs'
+REFERENCE_WIDTH_CM = 2.5   # coin diameter (adjust if needed)
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
+# -----------------------------
+# UTIL FUNCTION
+# -----------------------------
+def order_points(pts):
+    rect = np.zeros((4, 2), dtype="float32")
+
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]
+    rect[2] = pts[np.argmax(s)]
+
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]
+    rect[3] = pts[np.argmax(diff)]
+
+    return rect
+
+# -----------------------------
+# MEASUREMENT FUNCTION
+# -----------------------------
+def measure(image_path):
+    image = cv2.imread(image_path)
+    orig = image.copy()
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = cv2.GaussianBlur(gray, (7, 7), 0)
+
+    edged = cv2.Canny(gray, 30, 150)
+    edged = cv2.dilate(edged, None, iterations=2)
+    edged = cv2.erode(edged, None, iterations=1)
+
+    cnts, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # sort contours from smallest to largest
+    cnts = sorted(cnts, key=cv2.contourArea)
+
+    pixels_per_cm = None
+
+    for c in cnts:
+        if cv2.contourArea(c) < 500:
+            continue
+
+        rect = cv2.minAreaRect(c)
+        box = cv2.boxPoints(rect)
+        box = np.array(box, dtype="int")
+
+        box = order_points(box)
+        (tl, tr, br, bl) = box
+
+        width = np.linalg.norm(tr - tl)
+        height = np.linalg.norm(tr - br)
+
+        # FIRST OBJECT = REFERENCE (coin)
+        if pixels_per_cm is None:
+            pixels_per_cm = width / REFERENCE_WIDTH_CM
+
+            # draw reference
+            cv2.drawContours(orig, [box.astype("int")], -1, (0, 0, 255), 2)
+            cv2.putText(orig, "Reference",
+                        (int(tl[0]), int(tl[1] - 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            continue
+
+        # measure other objects
+        dimA = height / pixels_per_cm
+        dimB = width / pixels_per_cm
+
+        # draw box
+        cv2.drawContours(orig, [box.astype("int")], -1, (0, 255, 0), 2)
+
+        # annotate
+        cv2.putText(orig, f"{dimB:.1f} cm",
+                    (int(tr[0]), int(tr[1])),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
+
+        cv2.putText(orig, f"{dimA:.1f} cm",
+                    (int(br[0]), int(br[1])),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
+
+    output_path = os.path.join(OUTPUT_FOLDER, str(uuid.uuid4()) + ".jpg")
+    cv2.imwrite(output_path, orig)
+
+    return output_path
+
+# -----------------------------
+# FLASK APP
+# -----------------------------
+app = Flask(__name__)
+
+@app.route("/", methods=["GET", "POST"])
+def home():
+    if request.method == "POST":
+        file = request.files['file']
+
+        filename = str(uuid.uuid4()) + ".jpg"
+        path = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(path)
+
+        output_path = measure(path)
+
+        return f"""
+        <h2>Result</h2>
+        <img src='/outputs/{os.path.basename(output_path)}' width='500'><br>
+        <br><a href="/">Upload another</a>
+        """
+
+    return '''
+    <h1>Upload Image for Measurement</h1>
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <input type="submit" value="Upload">
+    </form>
+    '''
+
+@app.route('/outputs/<filename>')
+def send_output(filename):
+    return send_file(os.path.join(OUTPUT_FOLDER, filename))
+
+# -----------------------------
+# RUN
+# -----------------------------
+if __name__ == '__main__':
+    app.run(debug=True)
