@@ -1,4 +1,4 @@
-# 📏 Object Size Measurement using Computer Vision
+# 📏 Computer Vision Based Dimension Measurement
 
 An interactive, AI-powered Flask web application that automatically calculates the dimensions (width and height in centimeters) of objects in an uploaded image. Powered by **OpenCV** and **NumPy**.
 
